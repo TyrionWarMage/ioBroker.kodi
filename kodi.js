@@ -689,7 +689,6 @@ function fileManager(root, obj){
 }
 
 function NetflixGetEpisodes(series_id, properties) {
-	series_id = "80021955"
 	const param = "plugin://plugin.video.netflix/directory/show/" + series_id +"/";
 	const seasons_promise = GetDirectory(param, undefined, ["file", "showtitle"]);
 	seasons_promise.then((res) => {
