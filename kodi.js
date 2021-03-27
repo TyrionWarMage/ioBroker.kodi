@@ -91,6 +91,11 @@ let states = {
         canshuffle:         {val: false, name: "Can shuffle", role: "media", type: "boolean", read: false, write: false},
         canchangespeed:     {val: false, name: "Can change speed", role: "media", type: "boolean", read: false, write: false},
     },
+	netflix:	{
+		ContinueWatchingLibrary:  {val: '', name: "Recently watched shows", role: "media", type: "string", read: true, write: false},
+		NetflixShowLibrary:  {val: '', name: "Get tv show files", role: "media", type: "string", read: true, write: true},	
+		NetflixOpenUnwatched:  {val: '', name: "Open the first unwatched show episode", role: "media", type: "string", read: false, write: true},				
+	},
     main:       {
         play:              {val: false, name: "Controlling playback play", role: "button.play", type: "boolean", read: false, write: true},
         pause:             {val: false, name: "Controlling playback pause", role: "button.pause", type: "boolean", read: false, write: true},
@@ -683,23 +688,58 @@ function fileManager(root, obj){
     saveState('main.Directory', JSON.stringify(browser));
 }
 
-function GetDirectory(path){
+function NetflixGetEpisodes(series_id, properties) {
+	series_id = "80021955"
+	const param = "plugin://plugin.video.netflix/directory/show/" + series_id +"/";
+	const seasons_promise = GetDirectory(param, undefined, ["file", "showtitle"]);
+	seasons_promise.then((res) => {
+		let seasons = res.files.map((entry) => {
+			entry.file = entry.file.substring(0,entry.file.length-1);
+			return entry.file.substring(entry.file.lastIndexOf('/') + 1);	
+		});	
+		let promises = seasons.map((season_id) => {
+			const query = "plugin://plugin.video.netflix/directory/show/" + series_id +"/season/"+season_id+"/"
+			return GetDirectory(query, undefined, properties)	
+		});
+		Promise.all(promises).then(results => {
+			const episodes = [].concat.apply([], results.map((entry) => {
+				return entry.files;	
+			}));
+			saveState('netflix.NetflixShowLibrary', JSON.stringify(episodes))	
+		}, (e) => {
+            ErrProcessing(e + '{NetflixGetEpisodes}');
+        }).catch((e) => {
+            ErrProcessing(e + '{NetflixGetEpisodes}');
+        });
+    }, (e) => {
+        ErrProcessing(e + '{NetflixGetEpisodes}');
+    }).catch((e) => {
+        ErrProcessing(e + '{NetflixGetEpisodes}');
+    })	
+}
+
+function GetDirectory(path, target, properties = ["title", "thumbnail", "fanart", "rating", "genre", "artist", "track", "season", "episode", "year", "duration", "album", "showtitle", "playcount", "file", "mimetype", "size", "lastmodified", "resume"]){
     adapter.log.debug('GetDirectory path: ' + JSON.stringify(path));
     if (path !== '/'){
         if (connection){
-            connection.run('Files.GetDirectory', {
+            let promise = connection.run('Files.GetDirectory', {
                 "directory":  path,
                 "media":      "files",
-                "properties": ["title", "thumbnail", "fanart", "rating", "genre", "artist", "track", "season", "episode", "year", "duration", "album", "showtitle", "playcount", "file", "mimetype", "size", "lastmodified", "resume"],
+                "properties": properties,
                 "sort":       {"method": "none", "order": "ascending"}
-            }).then((res) => {
-                adapter.log.debug('GetDirectory: ' + JSON.stringify(res));
-                saveState('main.Directory', JSON.stringify(res));
-            }, (e) => {
-                ErrProcessing(e + '{GetDirectory}');
-            }).catch((e) => {
-                ErrProcessing(e + '{GetDirectory}');
             })
+			if (target) {
+				promise.then((res) => {
+	                adapter.log.debug('GetDirectory: ' + JSON.stringify(res));
+					saveState(target, JSON.stringify(res));	
+	            }, (e) => {
+	                ErrProcessing(e + '{GetDirectory}');
+	            }).catch((e) => {
+	                ErrProcessing(e + '{GetDirectory}');
+	            })	
+			} else {
+				return promise;
+			}
         }
     } else {
         GetSources(true);
@@ -1161,7 +1201,14 @@ function ConstructorCmd(name, ids, param){
                 break;
             case "Directory":
                 param = param.toString().replace("\\", "\\\\");
-                GetDirectory(param);
+                GetDirectory(param, 'main.Directory');
+                break;
+            case "ContinueWatchingLibrary":
+                param = "plugin://plugin.video.netflix/directory/video_list/continueWatching/continueWatching/";
+                GetDirectory(param, 'netflix.ContinueWatchingLibrary');
+                break;
+            case "NetflixShowLibrary":
+                NetflixGetEpisodes(param, ["title", "file", "playcount", "season", "episode"]);
                 break;
             case "ScanVideoLibrary":
                 method = 'VideoLibrary.Scan';
