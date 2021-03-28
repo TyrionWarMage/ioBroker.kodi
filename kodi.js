@@ -688,37 +688,50 @@ function fileManager(root, obj){
     saveState('main.Directory', JSON.stringify(browser));
 }
 
-function NetflixGetEpisodes(series_id, properties) {
-	const param = "plugin://plugin.video.netflix/directory/show/" + series_id +"/";
-	const seasons_promise = GetDirectory(param, undefined, ["file", "showtitle"]);
-	seasons_promise.then((res) => {
-		let seasons = res.files.map((entry) => {
-			entry.file = entry.file.substring(0,entry.file.length-1);
-			return entry.file.substring(entry.file.lastIndexOf('/') + 1);	
-		});	
-		let promises = seasons.map((season_id) => {
-			const query = "plugin://plugin.video.netflix/directory/show/" + series_id +"/season/"+season_id+"/"
-			return GetDirectory(query, undefined, properties)	
-		});
-		Promise.all(promises).then(results => {
-			const episodes = [].concat.apply([], results.map((entry) => {
-				return entry.files;	
-			}));
-			saveState('netflix.NetflixShowLibrary', JSON.stringify(episodes))	
-		}, (e) => {
-            ErrProcessing(e + '{NetflixGetEpisodes}');
-        }).catch((e) => {
-            ErrProcessing(e + '{NetflixGetEpisodes}');
-        });
-    }, (e) => {
-        ErrProcessing(e + '{NetflixGetEpisodes}');
-    }).catch((e) => {
-        ErrProcessing(e + '{NetflixGetEpisodes}');
-    })	
+async function NetflixGetEpisodesForSeason(series_id, season_id) {
+	let season_path = "plugin://plugin.video.netflix/directory/show/" + series_id +"/season/"+season_id+"/";
+	adapter.log.debug('NetflixGetEpisodes GetDirectory Season: ' + JSON.stringify(season_path));
+	let promise = connection.Files.GetDirectory({"directory":  season_path,
+					                "media":      "files",
+					                "properties": ["title", "file", "playcount", "season", "episode"]
+									});
+	let result = await promise;
+	return result.files;	
+}
+
+function NetflixGetEpisodes(series_id) {
+	const show_path = "plugin://plugin.video.netflix/directory/show/" + series_id +"/";
+	adapter.log.debug('NetflixGetEpisodes GetDirectory Show: ' + JSON.stringify(show_path));
+	if (connection){
+		let seasons_promise = connection.Files.GetDirectory({"directory":  show_path,
+								                "media":      "files",
+								                "properties": ["title", "file", "playcount", "season", "episode"]
+												});
+		seasons_promise.then((res) => {
+			let seasons = res.files.map((entry) => {
+				adapter.log.debug('NetflixGetEpisodes Seasons: ' + JSON.stringify(entry));
+				entry.file = entry.file.substring(0,entry.file.length-1);
+				return entry.file.substring(entry.file.lastIndexOf('/') + 1);		
+			});	
+			let episodes = seasons.map(NetflixGetEpisodesForSeason.bind(null,series_id));
+			episodes = Promise.all(episodes).then(results => {
+				episodes = [].concat.apply([], results);
+				saveState('netflix.NetflixShowLibrary',JSON.stringify(episodes))	
+			}, (e) => {
+		        ErrProcessing(e + '{NetflixGetEpisodes}');
+		    }).catch((e) => {
+		        ErrProcessing(e + '{NetflixGetEpisodes}');
+		    })	
+	    }, (e) => {
+	        ErrProcessing(e + '{NetflixGetEpisodes}');
+	    }).catch((e) => {
+	        ErrProcessing(e + '{NetflixGetEpisodes}');
+	    })	
+	}
 }
 
 function GetDirectory(path, target, properties = ["title", "thumbnail", "fanart", "rating", "genre", "artist", "track", "season", "episode", "year", "duration", "album", "showtitle", "playcount", "file", "mimetype", "size", "lastmodified", "resume"]){
-    adapter.log.debug('GetDirectory path: ' + JSON.stringify(path));
+    adapter.log.debug('GetDirectory path: ' + JSON.stringify(path) + ' with properties ' + JSON.stringify(properties));
     if (path !== '/'){
         if (connection){
             let promise = connection.run('Files.GetDirectory', {
@@ -1207,7 +1220,7 @@ function ConstructorCmd(name, ids, param){
                 GetDirectory(param, 'netflix.ContinueWatchingLibrary');
                 break;
             case "NetflixShowLibrary":
-                NetflixGetEpisodes(param, ["title", "file", "playcount", "season", "episode"]);
+                NetflixGetEpisodes(param);
                 break;
             case "ScanVideoLibrary":
                 method = 'VideoLibrary.Scan';
