@@ -408,16 +408,14 @@ function GetCurrentItem(cb){
 
 function getRatigsSong(cb){
     if (connection && player_id !== undefined && player_id !== null && states.info.id.val && states.info.albumid.val){
-        const batch = connection.batch();
-        const GetSongDetails = batch.AudioLibrary.GetSongDetails({
+        const GetSongDetails = connection.run('AudioLibrary.GetSongDetails',{
             "songid":     states.info.id.val,
             "properties": ["albumid", "userrating"]
         });
-        const GetAlbumDetails = batch.AudioLibrary.GetAlbumDetails({
+        const GetAlbumDetails = connection.run('AudioLibrary.GetAlbumDetails',{
             "albumid":    states.info.albumid.val,
             "properties": ["userrating"]
         });
-        batch.send();
         Promise.all([GetSongDetails, GetAlbumDetails]).then((res) => {
             adapter.log.debug('Response getRatigs ' + JSON.stringify(res));
             ///////////////////////////////////////////////////////////////////////////////////////
@@ -440,14 +438,12 @@ function getRatigsSong(cb){
 
 function GetPlayerProperties(){
     if (connection && player_id !== undefined && player_id !== null){
-        const batch = connection.batch();
-        const Properties = batch.Player.GetProperties({
+        const Properties = connection.run('Player.GetProperties',{
             "playerid":   player_id,
             "properties": ["audiostreams", "canchangespeed", "canrepeat", "canseek", "canshuffle", "percentage", "live", "currentvideostream", "currentaudiostream", "currentsubtitle", "partymode", "playlistid", "position", "repeat", "shuffled", "speed", "subtitleenabled", "subtitles", "time", "totaltime", "type"]
         });
-        const InfoLabels = batch.XBMC.GetInfoLabels({"labels": ["MusicPlayer.Codec", "MusicPlayer.SampleRate", "MusicPlayer.BitRate", "MusicPlayer.Channels", "MusicPlayer.Rating", "MusicPlayer.UserRating", "MusicPlayer.Artist"]});
-        const CurrentPlay = batch.Player.GetItem({"playerid": player_id});
-        batch.send();
+        const InfoLabels = connection.run('XBMC.GetInfoLabels',{"labels": ["MusicPlayer.Codec", "MusicPlayer.SampleRate", "MusicPlayer.BitRate", "MusicPlayer.Channels", "MusicPlayer.Rating", "MusicPlayer.UserRating", "MusicPlayer.Artist"]});
+        const CurrentPlay = connection.run('Player.GetItem',{"playerid": player_id});
         Promise.all([Properties, InfoLabels, CurrentPlay]).then((res) => {
             adapter.log.debug('Response GetPlayerProperties ' + JSON.stringify(res));
             ///////////////////////////////////////////////////////////////////////////////////////
@@ -615,7 +611,7 @@ function getConnection(cb){
         });
         adapter.log.info('KODI connected');
         adapter.setState('info.connection', true, true);
-        version = parseInt(connection.schema.rawSchema.version, 10);
+        version = parseInt(connection.schema.version, 10);
         cb && cb(null, connection);
     }, (error) => {
         adapter.log.debug('getConnection ' + error);
@@ -750,9 +746,9 @@ function GetPortWebServer(cb){
             adapter.config.portweb = res.value;
             cb && cb();
         }, (e) => {
-            ErrProcessing(e + '{GetPlayList}');
+            ErrProcessing(e + '{GetPortWebServer}');
         }).catch((e) => {
-            ErrProcessing(e + '{GetPlayList}');
+            ErrProcessing(e + '{GetPortWebServer}');
         })
 
     }
@@ -760,16 +756,14 @@ function GetPortWebServer(cb){
 
 function GetPVRChannels(cb){
     if (connection){
-        let batch = connection.batch();
-        let alltv = batch.PVR.GetChannels({
+        let alltv = connection.run('PVR.GetChannels',{
             "channelgroupid": "alltv",
             "properties":     ["channel", "channeltype", "hidden", "lastplayed", "locked", "thumbnail", "broadcastnow"]
         });
-        let allradio = batch.PVR.GetChannels({
+        let allradio = connection.run('PVR.GetChannels',{
             "channelgroupid": "allradio",
             "properties":     ["channel", "channeltype", "hidden", "lastplayed", "locked", "thumbnail", "broadcastnow"]
         });
-        batch.send();
         Promise.all([alltv, allradio]).then((res) => {
             if (res){
                 saveState('pvr.playlist_tv', JSON.stringify(res[0]));
@@ -788,11 +782,9 @@ function GetPVRChannels(cb){
 
 function GetNameVersion(cb){
     if (connection){
-        let batch = connection.batch();
-        let GetProperties = batch.Application.GetProperties({"properties": ["name", "version"]});
-        let GetInfoBooleans = batch.XBMC.GetInfoBooleans({"booleans": ["System.Platform.Linux", "System.Platform.Linux.RaspberryPi", "System.Platform.Windows", "System.Platform.OSX", "System.Platform.IOS", "System.Platform.Darwin", "System.Platform.ATV2", "System.Platform.Android"]});
-        let GetInfoLabels = batch.XBMC.GetInfoLabels({"labels": ["System.KernelVersion", "System.BuildVersion"]});
-        batch.send();
+        let GetProperties = connection.run('Application.GetProperties',{"properties": ["name", "version"]});
+        let GetInfoBooleans = connection.run('XBMC.GetInfoBooleans',{"booleans": ["System.Platform.Linux", "System.Platform.Linux.RaspberryPi", "System.Platform.Windows", "System.Platform.OSX", "System.Platform.IOS", "System.Platform.Darwin", "System.Platform.ATV2", "System.Platform.Android"]});
+        let GetInfoLabels = connection.run('XBMC.GetInfoLabels',{"labels": ["System.KernelVersion", "System.BuildVersion"]});
         Promise.all([GetProperties, GetInfoBooleans, GetInfoLabels]).then((res) => {
             adapter.log.debug('GetNameVersion: ' + JSON.stringify(res[1]));
             if (res[2]['System.KernelVersion'] === 'Ждите…' || res[2]['System.KernelVersion'] === 'Wait…' || res[2]['System.KernelVersion'] === 'Warten…'){
@@ -1234,7 +1226,7 @@ function sendCommand(method, param, callback){
 }
 
 function ErrProcessing(error){
-    adapter.log.debug(error);
+    adapter.log.error(error);
     if (connection && connection.socket) connection.socket.close();
     connection = null;
     connect();

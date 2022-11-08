@@ -18,7 +18,8 @@
   },
   "dependencies": {
     "@iobroker/adapter-core": "^2.5.1",
-    "json-rpc-2.0": "^1.4.1"
+    "json-rpc-2.0": "^1.4.1",
+    "cross-fetch": "^3.1.5"
   },
   "devDependencies": {
     "@iobroker/testing": "^2.4.4",
