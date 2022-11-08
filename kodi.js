@@ -1,6 +1,6 @@
 "use strict";
 const utils = require('@iobroker/adapter-core');
-const kodi = require('kodi-ws');
+const kodi = require('./lib/Connection');
 let adapter, connection = null, player_id = null, channel = false, playlist_id = 0, mem = null,
     mem_pos = null, mem_time = null, timer, reconnectTimer, getPlayListTimer, SwitchPVRTimer, GetSourcesTimer, GetNameVersionTimer, infoFileTimer, version;
 
@@ -601,7 +601,7 @@ function getConnection(cb){
         return;
     }
     timer && clearTimeout(timer);
-    kodi(adapter.config.ip, adapter.config.port).then((_connection) => {
+    kodi(adapter.config.ip, adapter.config.port, adapter.config.login, adapter.config.password).then((_connection) => {
         connection = _connection;
         _connection.on('error', (err) => {
             adapter.log.debug('Error: ' + err);

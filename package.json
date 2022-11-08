@@ -1,12 +1,12 @@
 {
   "name": "iobroker.kodi",
-  "version": "2.0.8",
+  "version": "2.1.0",
   "description": "iobroker.kodi Adapter",
   "author": {
     "name": "instalator",
     "email": "vvvalt@mail.ru"
   },
-  "homepage": "https://github.com/instalator/ioBroker.kodi",
+  "homepage": "https://github.com/iobroker-community-adapters/iobroker.kodi",
   "license": "MIT",
   "keywords": [
     "ioBroker",
@@ -14,11 +14,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/instalator/ioBroker.kodi"
+    "url": "https://github.com/iobroker-community-adapters/iobroker.kodi"
   },
   "dependencies": {
-    "kodi-ws": "https://github.com/iobroker-community-adapters/kodi-ws/tarball/master/",
-    "@iobroker/adapter-core": "^2.5.1"
+    "@iobroker/adapter-core": "^2.5.1",
+    "json-rpc-2.0": "^1.4.1"
   },
   "devDependencies": {
     "@iobroker/testing": "^2.4.4",
@@ -50,7 +50,7 @@
     "lint": "eslint"
   },
   "bugs": {
-    "url": "https://github.com/instalator/ioBroker.kodi/issues"
+    "url": "https://github.com/iobroker-community-adapters/iobroker.kodi/issues"
   },
   "engines": {
     "node": ">=11"

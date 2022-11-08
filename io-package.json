@@ -1,8 +1,11 @@
 {
   "common": {
     "name": "kodi",
-    "version": "2.0.8",
+    "version": "2.1.0",
     "news": {
+      "2.1.0": {
+        "en": "Removed kodi-ws\nEnabled authentication"
+      },
       "2.0.8": {
         "en": "updates and fixes",
         "de": "Updates und Korrekturen",
